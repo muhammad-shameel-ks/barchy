@@ -48,11 +48,10 @@ fi
 
 # 3. Check for Paru
 if ! command -v paru &> /dev/null || ! paru --version &> /dev/null; then
-    echo -e "${YELLOW}Paru not found or broken (library mismatch). Installing Paru from source...${NC}"
+    echo -e "${YELLOW}Paru not found or broken. Installing paru-bin...${NC}"
     sudo pacman -S --needed base-devel git
     TEMP_DIR=$(mktemp -d)
-    # Using 'paru' (source) instead of 'paru-bin' for better library compatibility
-    git clone https://aur.archlinux.org/paru.git "$TEMP_DIR"
+    git clone https://aur.archlinux.org/paru-bin.git "$TEMP_DIR"
     
     # Check if running as root - makepkg cannot run as root
     if [ "$EUID" -eq 0 ]; then
@@ -65,6 +64,16 @@ if ! command -v paru &> /dev/null || ! paru --version &> /dev/null; then
         cd -
     fi
     rm -rf "$TEMP_DIR"
+
+    # Post-install check for library mismatch (common in May 2026)
+    if ! paru --version &> /dev/null; then
+        echo -e "${YELLOW}Detected library mismatch (libalpm). Attempting shim...${NC}"
+        CURRENT_ALPM=$(ls /usr/lib/libalpm.so.1[0-9] | tail -n 1)
+        if [ -f "$CURRENT_ALPM" ] && [ ! -f /usr/lib/libalpm.so.15 ]; then
+            echo -e "${BLUE}Creating temporary shim: /usr/lib/libalpm.so.15 -> $CURRENT_ALPM${NC}"
+            sudo ln -sf "$CURRENT_ALPM" /usr/lib/libalpm.so.15
+        fi
+    fi
 fi
 
 # 4. Install Packages

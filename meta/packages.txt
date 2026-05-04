@@ -1,6 +1,6 @@
 # Base
 hyprland
-paru
+paru-bin
 base-devel
 git
 
