@@ -18,6 +18,9 @@ if ! grep -q "Arch Linux" /etc/os-release; then
     exit 1
 fi
 
+echo -e "${BLUE}Updating system mirrors and packages...${NC}"
+sudo pacman -Syu --noconfirm
+
 # 2. User Creation (Mandatory for non-root apps like Hyprland/Paru)
 if [ "$EUID" -eq 0 ]; then
     echo -e "${YELLOW}Running as root. It is highly recommended to create a non-privileged user.${NC}"
