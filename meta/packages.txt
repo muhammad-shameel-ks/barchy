@@ -5,11 +5,11 @@ base-devel
 git
 
 # UI & Shell
-swww
+swww-bin
 waybar
 mako
-walker
-elephant
+walker-bin
+elephant-bin
 polkit-gnome
 pavucontrol
 network-manager-applet
@@ -21,7 +21,7 @@ nautilus
 qt5-wayland
 qt6-wayland
 xdg-desktop-portal-hyprland
-cliphist
+cliphist-bin
 grim
 slurp
 brightnessctl
