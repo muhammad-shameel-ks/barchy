@@ -23,6 +23,10 @@ if [ -L /usr/lib/libalpm.so.15 ]; then
     echo -e "${YELLOW}Removing incompatible library shim...${NC}"
     sudo rm /usr/lib/libalpm.so.15
 fi
+if command -v paru &> /dev/null && ! paru --version &> /dev/null; then
+    echo -e "${YELLOW}Detected broken paru installation. Removing it...${NC}"
+    sudo pacman -Rns --noconfirm paru-bin || sudo pacman -Rns --noconfirm paru || true
+fi
 
 echo -e "${BLUE}Updating system mirrors and packages...${NC}"
 sudo pacman -Syu --noconfirm
