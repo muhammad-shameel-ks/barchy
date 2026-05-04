@@ -18,6 +18,12 @@ if ! grep -q "Arch Linux" /etc/os-release; then
     exit 1
 fi
 
+# Cleanup broken shims or paru-bin from previous attempts
+if [ -L /usr/lib/libalpm.so.15 ]; then
+    echo -e "${YELLOW}Removing incompatible library shim...${NC}"
+    sudo rm /usr/lib/libalpm.so.15
+fi
+
 echo -e "${BLUE}Updating system mirrors and packages...${NC}"
 sudo pacman -Syu --noconfirm
 
@@ -46,41 +52,41 @@ if [ "$EUID" -eq 0 ]; then
     fi
 fi
 
-# 3. Check for Paru
-if ! command -v paru &> /dev/null || ! paru --version &> /dev/null; then
-    echo -e "${YELLOW}Paru not found or broken. Installing paru-bin...${NC}"
+# 3. Check for AUR Helper (Preferring yay-bin for performance on weak machines)
+if ! command -v yay &> /dev/null && ! command -v paru &> /dev/null; then
+    echo -e "${YELLOW}No AUR helper found. Installing yay-bin (Pre-compiled)...${NC}"
     sudo pacman -S --needed base-devel git
     TEMP_DIR=$(mktemp -d)
-    git clone https://aur.archlinux.org/paru-bin.git "$TEMP_DIR"
+    git clone https://aur.archlinux.org/yay-bin.git "$TEMP_DIR"
     
-    # Check if running as root - makepkg cannot run as root
     if [ "$EUID" -eq 0 ]; then
-        echo -e "${RED}Error: Cannot build Paru as root. Please run this script as a normal user with sudo rights.${NC}"
+        echo -e "${RED}Error: Cannot build as root. Please run this script as a normal user.${NC}"
         rm -rf "$TEMP_DIR"
         exit 1
-    else
-        cd "$TEMP_DIR"
-        makepkg -si --noconfirm
-        cd -
     fi
-    rm -rf "$TEMP_DIR"
 
-    # Post-install check for library mismatch (common in May 2026)
-    if ! paru --version &> /dev/null; then
-        echo -e "${YELLOW}Detected library mismatch (libalpm). Attempting shim...${NC}"
-        CURRENT_ALPM=$(ls /usr/lib/libalpm.so.1[0-9] | tail -n 1)
-        if [ -f "$CURRENT_ALPM" ] && [ ! -f /usr/lib/libalpm.so.15 ]; then
-            echo -e "${BLUE}Creating temporary shim: /usr/lib/libalpm.so.15 -> $CURRENT_ALPM${NC}"
-            sudo ln -sf "$CURRENT_ALPM" /usr/lib/libalpm.so.15
-        fi
-    fi
+    cd "$TEMP_DIR"
+    makepkg -si --noconfirm
+    cd -
+    rm -rf "$TEMP_DIR"
+fi
+
+# Define helper command
+if command -v yay &> /dev/null; then
+    HELPER="yay"
+elif command -v paru &> /dev/null; then
+    HELPER="paru"
+else
+    echo -e "${RED}Error: Failed to install an AUR helper.${NC}"
+    exit 1
 fi
 
 # 4. Install Packages
-echo -e "${BLUE}Installing required packages...${NC}"
+echo -e "${BLUE}Installing required packages using $HELPER...${NC}"
 PACKAGES_FILE="$(dirname "$(readlink -f "$0")")/meta/packages.txt"
 if [ -f "$PACKAGES_FILE" ]; then
-    paru -S --needed --noconfirm - < "$PACKAGES_FILE"
+    # Filter out the helper name from the package list to avoid self-conflict
+    grep -vE "^(paru|paru-bin|yay|yay-bin)$" "$PACKAGES_FILE" | $HELPER -S --needed --noconfirm -
 else
     echo -e "${RED}Error: packages.txt not found at $PACKAGES_FILE${NC}"
     exit 1
