@@ -89,11 +89,18 @@ else
 fi
 
 # 4. Install Packages
-echo -e "${BLUE}Installing required packages using $HELPER...${NC}"
+echo -e "${BLUE}Installing packages...${NC}"
 PACKAGES_FILE="$(dirname "$(readlink -f "$0")")/meta/packages.txt"
 if [ -f "$PACKAGES_FILE" ]; then
-    # Filter out the helper name from the package list to avoid self-conflict
-    grep -vE "^(paru|paru-bin|yay|yay-bin)$" "$PACKAGES_FILE" | $HELPER -S --needed --noconfirm -
+    PKGS=$(grep -v '^#' "$PACKAGES_FILE" | xargs)
+    
+    echo -e "${BLUE}Step 4a: Installing official repo packages via pacman...${NC}"
+    # Try to install everything with pacman; it will skip AUR packages automatically
+    sudo pacman -S --needed --noconfirm $PKGS 2>/dev/null || true
+    
+    echo -e "${BLUE}Step 4b: Installing remaining AUR packages via $HELPER...${NC}"
+    # $HELPER (yay) will pick up anything pacman missed (AUR) and skip what's already there
+    $HELPER -S --needed --noconfirm $PKGS
 else
     echo -e "${RED}Error: packages.txt not found at $PACKAGES_FILE${NC}"
     exit 1
