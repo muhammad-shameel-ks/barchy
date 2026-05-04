@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# --- Barchy CLI ---
+
+STATE_FILE="$HOME/.local/state/barchy/version"
+MIGRATIONS_DIR="$(dirname "$(readlink -f "$0")")/../migrations"
+
+function show_help() {
+    echo "Barchy OS Management Tool"
+    echo ""
+    echo "Usage: barchy [command]"
+    echo ""
+    echo "Commands:"
+    echo "  update    Run pending migrations and update system"
+    echo "  reload    Reload Hyprland configuration"
+    echo "  version   Show current Barchy version"
+    echo "  help      Show this help message"
+}
+
+function run_update() {
+    echo "Checking for updates..."
+    
+    if [ ! -f "$STATE_FILE" ]; then
+        echo "0" > "$STATE_FILE"
+    fi
+    
+    current_version=$(cat "$STATE_FILE")
+    
+    # Sort migrations by name
+    scripts=$(ls "$MIGRATIONS_DIR" | grep -E '^[0-9]+' | sort)
+    
+    updated=false
+    for script in $scripts; do
+        version=$(echo "$script" | cut -d'_' -f1 | sed 's/^0*//')
+        if [ "$version" -gt "$current_version" ]; then
+            echo "Applying migration: $script"
+            bash "$MIGRATIONS_DIR/$script"
+            echo "$version" > "$STATE_FILE"
+            updated=true
+        fi
+    done
+    
+    if [ "$updated" = true ]; then
+        echo "System updated successfully."
+    else
+        echo "System is already up to date."
+    fi
+}
+
+case "$1" in
+    update)
+        run_update
+        ;;
+    reload)
+        hyprctl reload
+        ;;
+    version)
+        cat "$STATE_FILE"
+        ;;
+    *)
+        show_help
+        ;;
+esac

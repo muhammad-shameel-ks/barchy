@@ -1,0 +1,27 @@
+# Base
+hyprland
+paru-bin
+base-devel
+git
+
+# UI & Shell
+swww
+waybar
+mako
+walker
+elephant
+polkit-gnome
+pavucontrol
+network-manager-applet
+alacritty
+nwg-look
+nautilus
+
+# Compatibility & Utilities
+qt5-wayland
+qt6-wayland
+xdg-desktop-portal-hyprland
+cliphist
+grim
+slurp
+brightnessctl
