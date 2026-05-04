@@ -18,7 +18,32 @@ if ! grep -q "Arch Linux" /etc/os-release; then
     exit 1
 fi
 
-# 2. Check for Paru
+# 2. User Creation (Mandatory for non-root apps like Hyprland/Paru)
+if [ "$EUID" -eq 0 ]; then
+    echo -e "${YELLOW}Running as root. It is highly recommended to create a non-privileged user.${NC}"
+    read -p "Would you like to create a new user now? (y/N): " create_user
+    if [[ "$create_user" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        read -p "Enter username: " new_username
+        if id "$new_username" &>/dev/null; then
+            echo -e "${YELLOW}User $new_username already exists.${NC}"
+        else
+            useradd -m -G wheel,video,audio "$new_username"
+            echo -e "${BLUE}Please set a password for $new_username:${NC}"
+            passwd "$new_username"
+            
+            # Ensure wheel group has sudo access
+            if ! grep -q "^%wheel ALL=(ALL:ALL) ALL" /etc/sudoers; then
+                echo -e "${BLUE}Enabling sudo for wheel group...${NC}"
+                echo "%wheel ALL=(ALL:ALL) ALL" >> /etc/sudoers
+            fi
+            echo -e "${GREEN}User $new_username created. Please log in as this user to continue.${NC}"
+            echo -e "${YELLOW}Commands: exit, then log in, then run this script again.${NC}"
+            exit 0
+        fi
+    fi
+fi
+
+# 3. Check for Paru
 if ! command -v paru &> /dev/null; then
     echo -e "${YELLOW}Paru not found. Installing Paru...${NC}"
     sudo pacman -S --needed base-devel git
@@ -27,16 +52,9 @@ if ! command -v paru &> /dev/null; then
     
     # Check if running as root - makepkg cannot run as root
     if [ "$EUID" -eq 0 ]; then
-        echo -e "${YELLOW}Running as root. Creating temporary user 'barchy-build' for installation...${NC}"
-        useradd -m barchy-build || true
-        chown -R barchy-build:barchy-build "$TEMP_DIR"
-        # Allow barchy-build to run pacman via sudo without password for this operation
-        echo "barchy-build ALL=(ALL) NOPASSWD: /usr/bin/pacman" > /etc/sudoers.d/barchy-build
-        
-        su barchy-build -c "cd $TEMP_DIR && makepkg -si --noconfirm"
-        
-        rm /etc/sudoers.d/barchy-build
-        userdel -r barchy-build
+        echo -e "${RED}Error: Cannot build Paru as root. Please run this script as a normal user with sudo rights.${NC}"
+        rm -rf "$TEMP_DIR"
+        exit 1
     else
         cd "$TEMP_DIR"
         makepkg -si --noconfirm
@@ -45,7 +63,7 @@ if ! command -v paru &> /dev/null; then
     rm -rf "$TEMP_DIR"
 fi
 
-# 3. Install Packages
+# 4. Install Packages
 echo -e "${BLUE}Installing required packages...${NC}"
 PACKAGES_FILE="$(dirname "$(readlink -f "$0")")/meta/packages.txt"
 if [ -f "$PACKAGES_FILE" ]; then
@@ -55,7 +73,7 @@ else
     exit 1
 fi
 
-# 4. Setup Configs (Symlinking)
+# 5. Setup Configs (Symlinking)
 echo -e "${BLUE}Setting up configuration symlinks...${NC}"
 CONFIG_SRC="$(dirname "$(readlink -f "$0")")/configs"
 mkdir -p "$HOME/.config"
@@ -70,7 +88,7 @@ for dir in "$CONFIG_SRC"/*; do
     ln -sfn "$dir" "$target"
 done
 
-# 5. Initialize State
+# 6. Initialize State
 echo -e "${BLUE}Initializing system state...${NC}"
 STATE_DIR="$HOME/.local/state/barchy"
 mkdir -p "$STATE_DIR"
