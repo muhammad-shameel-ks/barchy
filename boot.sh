@@ -24,9 +24,24 @@ if ! command -v paru &> /dev/null; then
     sudo pacman -S --needed base-devel git
     TEMP_DIR=$(mktemp -d)
     git clone https://aur.archlinux.org/paru-bin.git "$TEMP_DIR"
-    cd "$TEMP_DIR"
-    makepkg -si --noconfirm
-    cd -
+    
+    # Check if running as root - makepkg cannot run as root
+    if [ "$EUID" -eq 0 ]; then
+        echo -e "${YELLOW}Running as root. Creating temporary user 'barchy-build' for installation...${NC}"
+        useradd -m barchy-build || true
+        chown -R barchy-build:barchy-build "$TEMP_DIR"
+        # Allow barchy-build to run pacman via sudo without password for this operation
+        echo "barchy-build ALL=(ALL) NOPASSWD: /usr/bin/pacman" > /etc/sudoers.d/barchy-build
+        
+        su barchy-build -c "cd $TEMP_DIR && makepkg -si --noconfirm"
+        
+        rm /etc/sudoers.d/barchy-build
+        userdel -r barchy-build
+    else
+        cd "$TEMP_DIR"
+        makepkg -si --noconfirm
+        cd -
+    fi
     rm -rf "$TEMP_DIR"
 fi
 
