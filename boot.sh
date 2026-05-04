@@ -26,6 +26,7 @@ fi
 if command -v paru &> /dev/null && ! paru --version &> /dev/null; then
     echo -e "${YELLOW}Detected broken paru installation. Removing it...${NC}"
     sudo pacman -Rns --noconfirm paru-bin || sudo pacman -Rns --noconfirm paru || true
+    hash -r
 fi
 
 echo -e "${BLUE}Updating system mirrors and packages...${NC}"
@@ -57,7 +58,8 @@ if [ "$EUID" -eq 0 ]; then
 fi
 
 # 3. Check for AUR Helper (Preferring yay-bin for performance on weak machines)
-if ! command -v yay &> /dev/null && ! command -v paru &> /dev/null; then
+# Use 'type -p' to avoid shell hashing issues
+if [ -z "$(type -p yay)" ] && [ -z "$(type -p paru)" ]; then
     echo -e "${YELLOW}No AUR helper found. Installing yay-bin (Pre-compiled)...${NC}"
     sudo pacman -S --needed base-devel git
     TEMP_DIR=$(mktemp -d)
@@ -73,12 +75,13 @@ if ! command -v yay &> /dev/null && ! command -v paru &> /dev/null; then
     makepkg -si --noconfirm
     cd -
     rm -rf "$TEMP_DIR"
+    hash -r
 fi
 
 # Define helper command
-if command -v yay &> /dev/null; then
+if [ -n "$(type -p yay)" ]; then
     HELPER="yay"
-elif command -v paru &> /dev/null; then
+elif [ -n "$(type -p paru)" ]; then
     HELPER="paru"
 else
     echo -e "${RED}Error: Failed to install an AUR helper.${NC}"
