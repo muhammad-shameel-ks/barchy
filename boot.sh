@@ -121,7 +121,23 @@ for dir in "$CONFIG_SRC"/*; do
     ln -sfn "$dir" "$target"
 done
 
-# 6. Initialize State
+# 6. Install Barchy CLI
+echo -e "${BLUE}Installing barchy CLI...${NC}"
+mkdir -p "$HOME/.local/bin"
+BARCHY_BIN="$(dirname "$(readlink -f "$0")")/bin/barchy"
+if [ -f "$BARCHY_BIN" ]; then
+    cp "$BARCHY_BIN" "$HOME/.local/bin/barchy"
+    chmod +x "$HOME/.local/bin/barchy"
+    # Add to PATH if not already there
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+    fi
+    echo "Barchy CLI installed to ~/.local/bin/barchy"
+else
+    echo -e "${YELLOW}Warning: barchy CLI not found, skipping installation.${NC}"
+fi
+
+# 7. Initialize State
 echo -e "${BLUE}Initializing system state...${NC}"
 STATE_DIR="$HOME/.local/state/barchy"
 mkdir -p "$STATE_DIR"
