@@ -47,8 +47,8 @@ if [ "$EUID" -eq 0 ]; then
 fi
 
 # 3. Check for Paru
-if ! command -v paru &> /dev/null; then
-    echo -e "${YELLOW}Paru not found. Installing Paru...${NC}"
+if ! command -v paru &> /dev/null || ! paru --version &> /dev/null; then
+    echo -e "${YELLOW}Paru not found or broken (library mismatch). Reinstalling Paru...${NC}"
     sudo pacman -S --needed base-devel git
     TEMP_DIR=$(mktemp -d)
     git clone https://aur.archlinux.org/paru-bin.git "$TEMP_DIR"
